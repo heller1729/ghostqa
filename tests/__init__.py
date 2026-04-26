@@ -1,0 +1,3 @@
+"""
+GhostQA Tests
+"""

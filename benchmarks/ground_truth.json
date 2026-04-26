@@ -1,0 +1,944 @@
+{
+  "version": "2.0",
+  "created": "2026-04-22",
+  "description": "Ground truth benchmark for GhostQA evaluation. 100 labeled bugs across 5 test applications.",
+  "apps": {
+    "juice-shop": {
+      "name": "OWASP Juice Shop",
+      "url": "http://localhost:3000",
+      "description": "Deliberately insecure e-commerce web application for security training",
+      "total_bugs": 25
+    },
+    "academybugs": {
+      "name": "AcademyBugs",
+      "url": "https://academybugs.com/find-bugs/",
+      "description": "Practice e-commerce site with 25 intentionally planted bugs",
+      "total_bugs": 25
+    },
+    "the-internet": {
+      "name": "The Internet (Heroku)",
+      "url": "https://the-internet.herokuapp.com",
+      "description": "Collection of common web scenarios for testing practice",
+      "total_bugs": 20
+    },
+    "saucedemo": {
+      "name": "SauceDemo (Swag Labs)",
+      "url": "https://www.saucedemo.com",
+      "description": "Sauce Labs demo e-commerce app with intentional defects per user role",
+      "total_bugs": 15,
+      "notes": "Use problem_user/secret_sauce for buggy behavior, standard_user/secret_sauce for baseline"
+    },
+    "toolshop": {
+      "name": "Practice Software Testing (Toolshop)",
+      "url": "https://practicesoftwaretesting.com",
+      "description": "Angular e-commerce toolshop with ~100 intentional bugs for testing practice",
+      "total_bugs": 15
+    }
+  },
+  "bugs": [
+    {
+      "id": "JS-001",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/",
+      "type": "visual",
+      "severity": "medium",
+      "description": "Generic currency symbol used instead of a specific currency like USD or EUR",
+      "keywords": ["currency", "symbol", "generic", "¤", "non-standard"]
+    },
+    {
+      "id": "JS-002",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/",
+      "type": "layout",
+      "severity": "medium",
+      "description": "Cookie consent banner overlaps product cards at the bottom of the page",
+      "keywords": ["cookie", "banner", "overlap", "product", "obstruct", "consent"]
+    },
+    {
+      "id": "JS-003",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/",
+      "type": "visual",
+      "severity": "medium",
+      "description": "Low contrast text on the cookie banner dismiss link making it hard to read",
+      "keywords": ["contrast", "cookie", "dismiss", "hard to read", "low contrast", "me want"]
+    },
+    {
+      "id": "JS-004",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/",
+      "type": "accessibility",
+      "severity": "medium",
+      "description": "Multiple product images missing alt text attributes violating WCAG 1.1.1",
+      "keywords": ["alt", "image", "missing", "WCAG", "alt text", "accessibility"]
+    },
+    {
+      "id": "JS-005",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/",
+      "type": "accessibility",
+      "severity": "medium",
+      "description": "Page is missing a main landmark element for assistive technology navigation",
+      "keywords": ["main", "landmark", "missing", "assistive", "navigation"]
+    },
+    {
+      "id": "JS-006",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/",
+      "type": "accessibility",
+      "severity": "low",
+      "description": "Page is missing an h1 heading element for proper document structure",
+      "keywords": ["h1", "heading", "missing", "structure", "SEO"]
+    },
+    {
+      "id": "JS-007",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/",
+      "type": "accessibility",
+      "severity": "medium",
+      "description": "Multiple buttons on the page lack accessible names for screen readers",
+      "keywords": ["button", "accessible", "name", "screen reader", "unlabeled"]
+    },
+    {
+      "id": "JS-008",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/",
+      "type": "price",
+      "severity": "medium",
+      "description": "Suspiciously high price of 9999.99 on Permafrost edition product suggesting a data error",
+      "keywords": ["9999", "price", "high", "suspicious", "permafrost", "error"]
+    },
+    {
+      "id": "JS-009",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/",
+      "type": "layout",
+      "severity": "medium",
+      "description": "Product name text is truncated or overflows its card container",
+      "keywords": ["truncat", "overflow", "product name", "text", "card", "cut off"]
+    },
+    {
+      "id": "JS-010",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/",
+      "type": "layout",
+      "severity": "medium",
+      "description": "Only X left stock banner overlaps product image and title area",
+      "keywords": ["only", "left", "banner", "overlap", "stock", "product image"]
+    },
+    {
+      "id": "JS-011",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/login",
+      "type": "accessibility",
+      "severity": "medium",
+      "description": "Login form email input field is missing a proper label or aria-label",
+      "keywords": ["email", "input", "label", "missing", "login", "form", "aria"]
+    },
+    {
+      "id": "JS-012",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/login",
+      "type": "visual",
+      "severity": "medium",
+      "description": "Login button has very low contrast when in disabled state making it hard to read",
+      "keywords": ["login", "button", "disabled", "contrast", "grey", "hard to read"]
+    },
+    {
+      "id": "JS-013",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/login",
+      "type": "visual",
+      "severity": "low",
+      "description": "The or text separator between login methods has low contrast against the dark background",
+      "keywords": ["or", "separator", "contrast", "dark", "login", "google"]
+    },
+    {
+      "id": "JS-014",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/login",
+      "type": "security",
+      "severity": "high",
+      "description": "Password field allows browser autocomplete which could expose credentials",
+      "keywords": ["password", "autocomplete", "credentials", "security", "browser"]
+    },
+    {
+      "id": "JS-015",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/register",
+      "type": "accessibility",
+      "severity": "medium",
+      "description": "Show password advice toggle button is missing an accessible name",
+      "keywords": ["password", "advice", "toggle", "accessible", "name", "button"]
+    },
+    {
+      "id": "JS-016",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/register",
+      "type": "security",
+      "severity": "high",
+      "description": "Registration password fields allow autocomplete which is a security vulnerability",
+      "keywords": ["password", "autocomplete", "register", "security", "repeat"]
+    },
+    {
+      "id": "JS-017",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/register",
+      "type": "visual",
+      "severity": "medium",
+      "description": "Contrast issues on the Already a customer link against the dark background",
+      "keywords": ["already", "customer", "contrast", "green", "link", "dark"]
+    },
+    {
+      "id": "JS-018",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/register",
+      "type": "layout",
+      "severity": "low",
+      "description": "Password character counter alignment is inconsistent between password fields",
+      "keywords": ["counter", "alignment", "character", "password", "inconsistent"]
+    },
+    {
+      "id": "JS-019",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/contact",
+      "type": "functional",
+      "severity": "medium",
+      "description": "Contact form author field is hardcoded to anonymous and cannot be edited",
+      "keywords": ["author", "anonymous", "hardcoded", "contact", "cannot edit"]
+    },
+    {
+      "id": "JS-020",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/contact",
+      "type": "security",
+      "severity": "medium",
+      "description": "CAPTCHA uses simple mathematical expression that is trivially solvable by automation",
+      "keywords": ["captcha", "simple", "math", "automation", "weak", "bypass"]
+    },
+    {
+      "id": "JS-021",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/about",
+      "type": "text",
+      "severity": "low",
+      "description": "Corporate history section contains Lorem Ipsum placeholder text",
+      "keywords": ["lorem", "ipsum", "placeholder", "text", "corporate", "history"]
+    },
+    {
+      "id": "JS-022",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/about",
+      "type": "security",
+      "severity": "high",
+      "description": "Customer feedback section exposes a mnemonic seed phrase for a crypto wallet",
+      "keywords": ["mnemonic", "seed", "phrase", "crypto", "wallet", "exposed", "sensitive"]
+    },
+    {
+      "id": "JS-023",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/about",
+      "type": "accessibility",
+      "severity": "medium",
+      "description": "About page has multiple images missing alt text attributes",
+      "keywords": ["image", "alt", "missing", "about", "accessibility"]
+    },
+    {
+      "id": "JS-024",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/about",
+      "type": "text",
+      "severity": "low",
+      "description": "Informal and unprofessional language used in the terms of use link text",
+      "keywords": ["informal", "unprofessional", "terms", "use", "language"]
+    },
+    {
+      "id": "JS-025",
+      "app": "juice-shop",
+      "page_url_pattern": "/#/",
+      "type": "accessibility",
+      "severity": "medium",
+      "description": "Form input fields missing proper labels or aria-label attributes for accessibility",
+      "keywords": ["form", "input", "label", "missing", "aria", "accessibility"]
+    },
+
+    {
+      "id": "AB-001",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "visual",
+      "severity": "medium",
+      "description": "Product image is distorted or stretched to incorrect aspect ratio",
+      "keywords": ["image", "distort", "stretch", "aspect", "ratio", "squished"]
+    },
+    {
+      "id": "AB-002",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "price",
+      "severity": "high",
+      "description": "Product price displays an incorrect or mismatched value compared to expected price",
+      "keywords": ["price", "wrong", "incorrect", "mismatch", "display", "cost", "15.14"]
+    },
+    {
+      "id": "AB-003",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "text",
+      "severity": "medium",
+      "description": "Product description contains a typo or grammatical error in the text",
+      "keywords": ["typo", "grammar", "spelling", "error", "text", "description", "misspell"]
+    },
+    {
+      "id": "AB-004",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "layout",
+      "severity": "medium",
+      "description": "Product card layout is misaligned or has inconsistent spacing in the grid",
+      "keywords": ["align", "spacing", "grid", "layout", "inconsistent", "misalign", "card"]
+    },
+    {
+      "id": "AB-005",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "functional",
+      "severity": "high",
+      "description": "Add to Cart button does not work or produces an error on specific products",
+      "keywords": ["add to cart", "button", "broken", "error", "click", "not work"]
+    },
+    {
+      "id": "AB-006",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "visual",
+      "severity": "medium",
+      "description": "Product image is missing or shows a broken image placeholder",
+      "keywords": ["image", "missing", "broken", "placeholder", "not loading"]
+    },
+    {
+      "id": "AB-007",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "text",
+      "severity": "medium",
+      "description": "Product name or title has text overflow or truncation cutting off content",
+      "keywords": ["overflow", "truncat", "text", "name", "cut off", "title"]
+    },
+    {
+      "id": "AB-008",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "functional",
+      "severity": "medium",
+      "description": "Search functionality returns wrong results or no results for valid queries",
+      "keywords": ["search", "wrong", "results", "no results", "query"]
+    },
+    {
+      "id": "AB-009",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "price",
+      "severity": "high",
+      "description": "Cart total calculation is incorrect with subtotal not matching item prices",
+      "keywords": ["cart", "total", "calculation", "incorrect", "sum", "subtotal", "math"]
+    },
+    {
+      "id": "AB-010",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "visual",
+      "severity": "medium",
+      "description": "Color or contrast issue making text difficult to read against its background",
+      "keywords": ["color", "contrast", "hard to read", "text", "background", "visibility"]
+    },
+    {
+      "id": "AB-011",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "layout",
+      "severity": "medium",
+      "description": "Elements overlap each other causing content to be hidden or unreadable",
+      "keywords": ["overlap", "hidden", "elements", "cover", "stack", "z-index"]
+    },
+    {
+      "id": "AB-012",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "functional",
+      "severity": "medium",
+      "description": "Navigation link or breadcrumb is broken or leads to the wrong page",
+      "keywords": ["navigation", "link", "broken", "breadcrumb", "wrong page", "dead link"]
+    },
+    {
+      "id": "AB-013",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "text",
+      "severity": "low",
+      "description": "Incorrect item count displayed showing wrong number of products",
+      "keywords": ["count", "number", "incorrect", "items", "wrong", "display"]
+    },
+    {
+      "id": "AB-014",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "functional",
+      "severity": "medium",
+      "description": "Sort or filter functionality produces incorrect ordering of products",
+      "keywords": ["sort", "filter", "order", "incorrect", "wrong", "ascending", "descending"]
+    },
+    {
+      "id": "AB-015",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "functional",
+      "severity": "low",
+      "description": "Footer link does not navigate to the expected destination or is broken",
+      "keywords": ["footer", "link", "broken", "navigate", "not work"]
+    },
+    {
+      "id": "AB-016",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "text",
+      "severity": "medium",
+      "description": "Duplicate text or content appearing on the page where it should not",
+      "keywords": ["duplicate", "text", "content", "repeated", "same"]
+    },
+    {
+      "id": "AB-017",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "layout",
+      "severity": "medium",
+      "description": "Page layout breaks or elements shift when the browser window is resized",
+      "keywords": ["responsive", "resize", "break", "layout", "shift", "mobile"]
+    },
+    {
+      "id": "AB-018",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "visual",
+      "severity": "low",
+      "description": "Missing or incorrect favicon for the website",
+      "keywords": ["favicon", "icon", "missing", "tab"]
+    },
+    {
+      "id": "AB-019",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "text",
+      "severity": "low",
+      "description": "Date or timestamp displayed in an incorrect or inconsistent format",
+      "keywords": ["date", "format", "incorrect", "timestamp", "inconsistent"]
+    },
+    {
+      "id": "AB-020",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "functional",
+      "severity": "high",
+      "description": "Form submission fails or shows an unexpected error message to the user",
+      "keywords": ["form", "submit", "error", "fail", "message", "unexpected"]
+    },
+    {
+      "id": "AB-021",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "visual",
+      "severity": "medium",
+      "description": "Required field indicator is missing making it unclear which fields are mandatory",
+      "keywords": ["required", "field", "indicator", "missing", "mandatory", "asterisk"]
+    },
+    {
+      "id": "AB-022",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "functional",
+      "severity": "medium",
+      "description": "Page scroll behavior is abnormal or content jumps unexpectedly on scroll",
+      "keywords": ["scroll", "jump", "abnormal", "behavior", "unexpected"]
+    },
+    {
+      "id": "AB-023",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "layout",
+      "severity": "medium",
+      "description": "Element stacking order is wrong causing interactive elements to be unclickable",
+      "keywords": ["z-index", "stacking", "unclickable", "behind", "covered"]
+    },
+    {
+      "id": "AB-024",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "visual",
+      "severity": "low",
+      "description": "Inconsistent font family or font size across similar page elements",
+      "keywords": ["font", "inconsistent", "size", "family", "style", "typography"]
+    },
+    {
+      "id": "AB-025",
+      "app": "academybugs",
+      "page_url_pattern": "/find-bugs/",
+      "type": "functional",
+      "severity": "medium",
+      "description": "Pagination controls do not work correctly or show wrong page numbers",
+      "keywords": ["pagination", "page", "number", "broken", "next", "previous"]
+    },
+
+    {
+      "id": "TI-001",
+      "app": "the-internet",
+      "page_url_pattern": "/broken_images",
+      "type": "visual",
+      "severity": "high",
+      "description": "Page contains intentionally broken images that fail to load and show placeholder",
+      "keywords": ["broken", "image", "fail", "load", "placeholder", "not loading"]
+    },
+    {
+      "id": "TI-002",
+      "app": "the-internet",
+      "page_url_pattern": "/challenging_dom",
+      "type": "layout",
+      "severity": "medium",
+      "description": "Page has dynamically changing element IDs and classes making DOM unstable",
+      "keywords": ["dynamic", "changing", "DOM", "unstable", "id", "class"]
+    },
+    {
+      "id": "TI-003",
+      "app": "the-internet",
+      "page_url_pattern": "/disappearing_elements",
+      "type": "functional",
+      "severity": "high",
+      "description": "Navigation elements randomly disappear on page refresh",
+      "keywords": ["disappear", "element", "navigation", "missing", "vanish", "refresh"]
+    },
+    {
+      "id": "TI-004",
+      "app": "the-internet",
+      "page_url_pattern": "/entry_ad",
+      "type": "layout",
+      "severity": "medium",
+      "description": "Intrusive modal popup advertisement appears automatically blocking page content",
+      "keywords": ["modal", "popup", "ad", "advertisement", "intrusive", "blocking"]
+    },
+    {
+      "id": "TI-005",
+      "app": "the-internet",
+      "page_url_pattern": "/javascript_error",
+      "type": "error",
+      "severity": "high",
+      "description": "Page triggers a JavaScript error on load that appears in the browser console",
+      "keywords": ["javascript", "error", "console", "exception", "onload"]
+    },
+    {
+      "id": "TI-006",
+      "app": "the-internet",
+      "page_url_pattern": "/typos",
+      "type": "text",
+      "severity": "medium",
+      "description": "Page contains intentional typographical errors in the displayed text",
+      "keywords": ["typo", "typographical", "spelling", "error", "text", "misspell"]
+    },
+    {
+      "id": "TI-007",
+      "app": "the-internet",
+      "page_url_pattern": "/shifting_content",
+      "type": "layout",
+      "severity": "medium",
+      "description": "Page content shifts or rearranges position unexpectedly between page loads",
+      "keywords": ["shift", "content", "move", "position", "rearrange", "layout shift"]
+    },
+    {
+      "id": "TI-008",
+      "app": "the-internet",
+      "page_url_pattern": "/large",
+      "type": "layout",
+      "severity": "medium",
+      "description": "Page has an extremely large and deeply nested DOM structure causing performance issues",
+      "keywords": ["large", "deep", "DOM", "nested", "performance", "slow"]
+    },
+    {
+      "id": "TI-009",
+      "app": "the-internet",
+      "page_url_pattern": "/notification_message",
+      "type": "functional",
+      "severity": "medium",
+      "description": "Flash notification messages show inconsistent or random success/error messages",
+      "keywords": ["notification", "flash", "message", "inconsistent", "random"]
+    },
+    {
+      "id": "TI-010",
+      "app": "the-internet",
+      "page_url_pattern": "/status_codes",
+      "type": "error",
+      "severity": "medium",
+      "description": "Links to pages that return various HTTP error status codes like 404 and 500",
+      "keywords": ["status", "code", "404", "500", "error", "HTTP"]
+    },
+    {
+      "id": "TI-011",
+      "app": "the-internet",
+      "page_url_pattern": "/login",
+      "type": "functional",
+      "severity": "medium",
+      "description": "Login form shows specific error messages that reveal whether username or password was wrong",
+      "keywords": ["login", "error", "message", "username", "password", "reveal", "specific"]
+    },
+    {
+      "id": "TI-012",
+      "app": "the-internet",
+      "page_url_pattern": "/checkboxes",
+      "type": "functional",
+      "severity": "low",
+      "description": "Checkbox default states are inconsistent with the first unchecked and second checked",
+      "keywords": ["checkbox", "default", "state", "unchecked", "checked", "inconsistent"]
+    },
+    {
+      "id": "TI-013",
+      "app": "the-internet",
+      "page_url_pattern": "/hovers",
+      "type": "accessibility",
+      "severity": "medium",
+      "description": "User profile information is only visible on hover with no alternative for keyboard users",
+      "keywords": ["hover", "hidden", "profile", "keyboard", "accessible", "information"]
+    },
+    {
+      "id": "TI-014",
+      "app": "the-internet",
+      "page_url_pattern": "/dynamic_content",
+      "type": "visual",
+      "severity": "medium",
+      "description": "Page content changes randomly on each reload with different text and images",
+      "keywords": ["dynamic", "content", "change", "random", "reload", "different"]
+    },
+    {
+      "id": "TI-015",
+      "app": "the-internet",
+      "page_url_pattern": "/slow",
+      "type": "visual",
+      "severity": "medium",
+      "description": "Page resources load extremely slowly causing a degraded user experience",
+      "keywords": ["slow", "loading", "performance", "delay", "resources"]
+    },
+    {
+      "id": "TI-016",
+      "app": "the-internet",
+      "page_url_pattern": "/",
+      "type": "accessibility",
+      "severity": "medium",
+      "description": "Main page is missing semantic HTML structure like headings and landmarks",
+      "keywords": ["semantic", "heading", "landmark", "structure", "accessibility"]
+    },
+    {
+      "id": "TI-017",
+      "app": "the-internet",
+      "page_url_pattern": "/dropdown",
+      "type": "functional",
+      "severity": "low",
+      "description": "Dropdown has a disabled placeholder option that says Please select an option",
+      "keywords": ["dropdown", "placeholder", "disabled", "select", "option"]
+    },
+    {
+      "id": "TI-018",
+      "app": "the-internet",
+      "page_url_pattern": "/forgot_password",
+      "type": "accessibility",
+      "severity": "medium",
+      "description": "Forgot password form input is missing a proper label element",
+      "keywords": ["forgot", "password", "label", "missing", "form", "input"]
+    },
+    {
+      "id": "TI-019",
+      "app": "the-internet",
+      "page_url_pattern": "/dynamic_controls",
+      "type": "functional",
+      "severity": "medium",
+      "description": "Checkbox and text input can be dynamically removed and re-added causing state loss",
+      "keywords": ["dynamic", "control", "remove", "add", "checkbox", "state"]
+    },
+    {
+      "id": "TI-020",
+      "app": "the-internet",
+      "page_url_pattern": "/exit_intent",
+      "type": "layout",
+      "severity": "medium",
+      "description": "Exit intent modal popup triggers when cursor moves toward browser tab area",
+      "keywords": ["exit", "intent", "modal", "popup", "cursor", "leave"]
+    },
+
+    {
+      "id": "SD-001",
+      "app": "saucedemo",
+      "page_url_pattern": "/inventory",
+      "type": "visual",
+      "severity": "high",
+      "description": "All product images are replaced with the same wrong image for problem_user account",
+      "keywords": ["image", "wrong", "broken", "replaced", "product", "same", "dog"]
+    },
+    {
+      "id": "SD-002",
+      "app": "saucedemo",
+      "page_url_pattern": "/inventory",
+      "type": "text",
+      "severity": "high",
+      "description": "Product names and descriptions are swapped or incorrect for problem_user",
+      "keywords": ["name", "description", "wrong", "incorrect", "swap", "mismatch", "product"]
+    },
+    {
+      "id": "SD-003",
+      "app": "saucedemo",
+      "page_url_pattern": "/inventory",
+      "type": "functional",
+      "severity": "high",
+      "description": "Sort functionality does not properly reorder products when changing sort option",
+      "keywords": ["sort", "order", "broken", "not work", "filter", "functionality"]
+    },
+    {
+      "id": "SD-004",
+      "app": "saucedemo",
+      "page_url_pattern": "/cart",
+      "type": "functional",
+      "severity": "high",
+      "description": "Remove button in cart does not work for problem_user, items cannot be removed",
+      "keywords": ["remove", "cart", "button", "broken", "not work", "item"]
+    },
+    {
+      "id": "SD-005",
+      "app": "saucedemo",
+      "page_url_pattern": "/checkout-step-one",
+      "type": "functional",
+      "severity": "high",
+      "description": "Checkout form last name field does not accept input for problem_user",
+      "keywords": ["checkout", "form", "last name", "input", "broken", "not work", "field"]
+    },
+    {
+      "id": "SD-006",
+      "app": "saucedemo",
+      "page_url_pattern": "/",
+      "type": "accessibility",
+      "severity": "medium",
+      "description": "Login page inputs are missing proper aria-label attributes for screen readers",
+      "keywords": ["login", "input", "aria", "label", "missing", "accessibility"]
+    },
+    {
+      "id": "SD-007",
+      "app": "saucedemo",
+      "page_url_pattern": "/",
+      "type": "security",
+      "severity": "high",
+      "description": "Valid usernames and passwords are displayed in plain text on the login page",
+      "keywords": ["password", "username", "plain text", "visible", "credentials", "exposed"]
+    },
+    {
+      "id": "SD-008",
+      "app": "saucedemo",
+      "page_url_pattern": "/inventory",
+      "type": "accessibility",
+      "severity": "medium",
+      "description": "Product images are missing alt text or have non-descriptive alt attributes",
+      "keywords": ["image", "alt", "missing", "accessibility", "text", "product"]
+    },
+    {
+      "id": "SD-009",
+      "app": "saucedemo",
+      "page_url_pattern": "/",
+      "type": "visual",
+      "severity": "medium",
+      "description": "Locked out user gets a generic error message with no guidance on how to unlock",
+      "keywords": ["locked", "error", "message", "generic", "guidance", "user"]
+    },
+    {
+      "id": "SD-010",
+      "app": "saucedemo",
+      "page_url_pattern": "/inventory",
+      "type": "layout",
+      "severity": "medium",
+      "description": "Page loads very slowly with noticeable delays for performance_glitch_user",
+      "keywords": ["slow", "performance", "delay", "loading", "glitch"]
+    },
+    {
+      "id": "SD-011",
+      "app": "saucedemo",
+      "page_url_pattern": "/inventory",
+      "type": "accessibility",
+      "severity": "medium",
+      "description": "Shopping cart badge count has no aria-live attribute for screen reader updates",
+      "keywords": ["cart", "badge", "count", "aria", "live", "screen reader"]
+    },
+    {
+      "id": "SD-012",
+      "app": "saucedemo",
+      "page_url_pattern": "/inventory",
+      "type": "functional",
+      "severity": "medium",
+      "description": "Add to cart button for some items shows incorrect state after clicking for error_user",
+      "keywords": ["add to cart", "button", "state", "incorrect", "error"]
+    },
+    {
+      "id": "SD-013",
+      "app": "saucedemo",
+      "page_url_pattern": "/checkout-step-two",
+      "type": "functional",
+      "severity": "medium",
+      "description": "Checkout overview page does not properly calculate tax or total for some users",
+      "keywords": ["checkout", "total", "tax", "calculate", "incorrect", "price"]
+    },
+    {
+      "id": "SD-014",
+      "app": "saucedemo",
+      "page_url_pattern": "/inventory",
+      "type": "visual",
+      "severity": "low",
+      "description": "Hamburger menu sidebar animation is jerky or overlaps content during transition",
+      "keywords": ["menu", "sidebar", "animation", "hamburger", "overlap", "jerky"]
+    },
+    {
+      "id": "SD-015",
+      "app": "saucedemo",
+      "page_url_pattern": "/inventory",
+      "type": "accessibility",
+      "severity": "medium",
+      "description": "Social media footer links have no accessible text describing their destination",
+      "keywords": ["social", "footer", "link", "accessible", "text", "twitter", "facebook"]
+    },
+
+    {
+      "id": "TS-001",
+      "app": "toolshop",
+      "page_url_pattern": "/",
+      "type": "accessibility",
+      "severity": "medium",
+      "description": "Product filter checkboxes are missing associated label elements",
+      "keywords": ["filter", "checkbox", "label", "missing", "accessibility"]
+    },
+    {
+      "id": "TS-002",
+      "app": "toolshop",
+      "page_url_pattern": "/",
+      "type": "visual",
+      "severity": "medium",
+      "description": "Product card images have inconsistent sizes or aspect ratios in the grid",
+      "keywords": ["image", "size", "inconsistent", "aspect", "ratio", "product", "card"]
+    },
+    {
+      "id": "TS-003",
+      "app": "toolshop",
+      "page_url_pattern": "/auth/login",
+      "type": "functional",
+      "severity": "medium",
+      "description": "Login form shows a generic error message without specifying which field is wrong",
+      "keywords": ["login", "error", "message", "generic", "field", "wrong"]
+    },
+    {
+      "id": "TS-004",
+      "app": "toolshop",
+      "page_url_pattern": "/auth/register",
+      "type": "functional",
+      "severity": "medium",
+      "description": "Registration form allows submission with mismatched password and confirmation fields",
+      "keywords": ["register", "password", "mismatch", "confirm", "validation", "form"]
+    },
+    {
+      "id": "TS-005",
+      "app": "toolshop",
+      "page_url_pattern": "/",
+      "type": "layout",
+      "severity": "medium",
+      "description": "Price slider filter control is not aligned properly with its label text",
+      "keywords": ["slider", "price", "filter", "align", "label", "control"]
+    },
+    {
+      "id": "TS-006",
+      "app": "toolshop",
+      "page_url_pattern": "/",
+      "type": "functional",
+      "severity": "medium",
+      "description": "Search returns no results or incorrect results for valid product names",
+      "keywords": ["search", "results", "no results", "incorrect", "product", "query"]
+    },
+    {
+      "id": "TS-007",
+      "app": "toolshop",
+      "page_url_pattern": "/product/",
+      "type": "accessibility",
+      "severity": "medium",
+      "description": "Product detail page quantity input has no accessible label for screen readers",
+      "keywords": ["quantity", "input", "label", "accessible", "product", "detail"]
+    },
+    {
+      "id": "TS-008",
+      "app": "toolshop",
+      "page_url_pattern": "/",
+      "type": "accessibility",
+      "severity": "low",
+      "description": "Page is missing proper heading hierarchy with skipped heading levels",
+      "keywords": ["heading", "hierarchy", "skip", "h1", "h2", "structure"]
+    },
+    {
+      "id": "TS-009",
+      "app": "toolshop",
+      "page_url_pattern": "/",
+      "type": "visual",
+      "severity": "low",
+      "description": "Product category badges have inconsistent styling or colors across the page",
+      "keywords": ["badge", "category", "inconsistent", "style", "color"]
+    },
+    {
+      "id": "TS-010",
+      "app": "toolshop",
+      "page_url_pattern": "/checkout",
+      "type": "functional",
+      "severity": "high",
+      "description": "Checkout process allows proceeding without required address fields filled in",
+      "keywords": ["checkout", "required", "address", "field", "validation", "empty"]
+    },
+    {
+      "id": "TS-011",
+      "app": "toolshop",
+      "page_url_pattern": "/contact",
+      "type": "functional",
+      "severity": "medium",
+      "description": "Contact form does not validate email format before submission",
+      "keywords": ["contact", "form", "email", "validate", "format", "submit"]
+    },
+    {
+      "id": "TS-012",
+      "app": "toolshop",
+      "page_url_pattern": "/",
+      "type": "layout",
+      "severity": "medium",
+      "description": "Product grid layout breaks or cards overlap on certain viewport widths",
+      "keywords": ["grid", "layout", "overlap", "card", "viewport", "break", "responsive"]
+    },
+    {
+      "id": "TS-013",
+      "app": "toolshop",
+      "page_url_pattern": "/product/",
+      "type": "visual",
+      "severity": "medium",
+      "description": "Product rating stars display is misaligned or shows fractional stars incorrectly",
+      "keywords": ["rating", "stars", "misaligned", "display", "fractional"]
+    },
+    {
+      "id": "TS-014",
+      "app": "toolshop",
+      "page_url_pattern": "/",
+      "type": "functional",
+      "severity": "medium",
+      "description": "Sort by price does not correctly order products with decimal price values",
+      "keywords": ["sort", "price", "order", "incorrect", "decimal"]
+    },
+    {
+      "id": "TS-015",
+      "app": "toolshop",
+      "page_url_pattern": "/",
+      "type": "accessibility",
+      "severity": "medium",
+      "description": "Navigation menu items are missing ARIA roles for proper assistive technology support",
+      "keywords": ["navigation", "menu", "aria", "role", "missing", "assistive"]
+    }
+  ]
+}
