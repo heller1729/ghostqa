@@ -6,17 +6,35 @@ GhostQA is an AI-powered tool that finds bugs in web applications automatically.
 
 It finds visual bugs, accessibility violations, functional issues, and even security vulnerabilities like SQL injection and XSS. The whole thing runs on top of vision-language models (Gemini, Claude, GPT) and Playwright for browser automation.
 
-## What It Does
+## Features
 
 - Takes a URL and autonomously explores the web application
 - Uses vision-language models to analyze screenshots and understand page content
 - Injects DOM context (accessibility, security, layout checks) alongside vision for better bug detection
 - Fills forms with SQL injection payloads and XSS vectors to test for security vulnerabilities
-- Generates structured JSON reports with bug type, severity, description, reproduction steps, and confidence scores
+- Generates structured JSON/HTML reports with bug type, severity, description, reproduction steps, and confidence scores
 - Maintains full run context across all steps so the agent never forgets what it already did
 - Generates run insights at the end of each scan so the next scan knows what to focus on
 - Supports 6 models across 3 providers: Google Gemini, Anthropic Claude, and OpenAI GPT
 - Includes an evaluation pipeline to benchmark agent performance against ground truth
+
+## How It Works
+
+GhostQA uses the ReAct framework (Yao et al., 2023) to interleave reasoning with actions. Each step follows this cycle:
+
+1. **Observe**: Take a screenshot of the current page and run DOM audits (accessibility, security, layout checks)
+2. **Think**: The LLM reasons about the full run context and decides what to do next
+3. **Act**: Execute the chosen action in the browser (click, fill form, navigate, scroll)
+4. **Detect**: Identify bugs from both visual analysis and DOM signals
+5. **Record**: Log the step into RunMemory with URL, action, result, bugs, and observations
+6. **Compress**: Every 10 steps, the LLM compresses older steps into a narrative summary
+7. **Loop**: Repeat for the configured number of steps
+8. **Insights**: At the end, generate run insights (unique findings, coverage gaps, next steps)
+9. **Report**: Save structured JSON/HTML reports with all detected bugs and insights
+
+The DOM context engine injects JavaScript into the page to extract signals that are invisible in screenshots, things like missing ARIA labels, insecure form configurations, broken links, and layout violations.
+
+**Turbo mode** combines vision analysis, DOM context, bug detection, and action selection into a single LLM call per step. This cuts cost in half compared to Standard mode while maintaining the same F1 score.
 
 ## System Architecture
 
@@ -79,45 +97,13 @@ flowchart TB
     Agent --> Output
 ```
 
-### How the Memory System Works
+### Memory System
 
 The agent maintains context at two levels:
 
 **Within a single run** (RunMemory): Every step the agent takes gets recorded. Every 10 steps, the LLM compresses older steps into a narrative summary. The agent always sees the compressed summary of all past steps plus the last 5 steps in full detail. This means at step 40, it still knows what bug it found on step 3.
 
 **Across multiple runs** (ScanContext + RunInsights): At the end of each scan, the LLM generates structured insights: what was unique about this run, what areas need more testing, what the next run should focus on. These insights get saved to a context file and loaded into the next scan's prompt automatically.
-
-## Project Structure
-
-```
-ghostqa/
-├── ghostqa/                  # Main package
-│   ├── agent.py              # Core agent loop (ReAct framework)
-│   ├── browser.py            # Playwright browser controller
-│   ├── context.py            # Cross-run persistent context
-│   ├── run_memory.py         # Within-run full context memory
-│   ├── vision.py             # Screenshot analysis
-│   ├── reasoning.py          # Action reasoning and planning
-│   ├── reporter.py           # Bug report generation
-│   ├── baseline.py           # Random baseline agent (no LLM)
-│   ├── config.py             # Configuration management
-│   ├── logger.py             # Logging utilities
-│   ├── utils.py              # Helper functions
-│   ├── __main__.py           # CLI entry point
-│   └── llm/                  # LLM provider integrations
-│       ├── base.py           # Abstract LLM interface
-│       ├── gemini.py         # Google Gemini provider
-│       ├── claude.py         # Anthropic Claude provider
-│       ├── openai_provider.py # OpenAI GPT provider
-│       └── factory.py        # Provider factory
-├── benchmarks/
-│   └── ground_truth.json     # 100 manually curated bugs across 5 apps
-├── evaluate.py               # Evaluation script (P/R/F1 computation)
-├── run_evaluation.py         # Batch evaluation runner
-├── requirements.txt          # Python dependencies
-├── .env.example              # Environment variable template
-└── reports/                  # Generated bug reports (gitignored)
-```
 
 ## Getting Started
 
@@ -176,18 +162,18 @@ GEMINI_API_KEY=your-key-here
 # ANTHROPIC_API_KEY=your-key-here
 ```
 
-### Running a Scan
+## Running a Scan
 
-The simplest way to run GhostQA is with Turbo mode, which makes one LLM call per step:
+The simplest way to run GhostQA is with Turbo mode on a locally running app:
 
 ```bash
 python -m ghostqa scan http://localhost:3000 --turbo --provider google --model gemini-2.5-flash
 ```
 
-By default the browser runs headless (no visible window) and the terminal shows a progress spinner. To actually see the browser and watch the agent work, add `--no-headless`. To see the full reasoning and action logs, add `--debug`:
+By default the browser runs headless (no visible window) and the terminal shows a progress spinner. To actually see the browser and watch the agent click around, add `--no-headless`. To see the full reasoning, action decisions, and bug detection logs in the terminal, add `--debug`:
 
 ```bash
-# See the browser + full debug output
+# Watch the browser + see full debug output
 python -m ghostqa scan http://localhost:3000 --turbo --provider google --model gemini-2.5-flash --no-headless --debug
 ```
 
@@ -197,16 +183,22 @@ To run more steps (default is 50):
 python -m ghostqa scan http://localhost:3000 --turbo --provider google --model gemini-2.5-flash --max-steps 75 --no-headless --debug
 ```
 
-Standard mode (two LLM calls per step, slightly more accurate but 2x cost):
+Standard mode uses two LLM calls per step (slightly more accurate but 2x cost):
 
 ```bash
 python -m ghostqa scan http://localhost:3000 --provider anthropic --model claude-opus-4-7 --no-headless --debug
 ```
 
-If you have a previous scan context saved and want to start fresh:
+If you have a previous scan context saved and want to ignore it:
 
 ```bash
 python -m ghostqa scan http://localhost:3000 --turbo --provider google --model gemini-2.5-flash --fresh
+```
+
+You can also give the agent focus instructions to test a specific area:
+
+```bash
+python -m ghostqa scan http://localhost:3000 --turbo --provider google --model gemini-2.5-flash --context "focus on the checkout flow and payment forms"
 ```
 
 ### CLI Flags Reference
@@ -220,7 +212,7 @@ python -m ghostqa scan http://localhost:3000 --turbo --provider google --model g
 | `--fresh` | off | Ignore saved context from previous runs, start clean |
 | `--provider` | from .env | LLM provider: google, openai, or anthropic |
 | `--model` | provider default | Specific model name |
-| `--context` | none | Focus instructions, e.g. "test the checkout flow" |
+| `--context` | none | Focus instructions for the agent |
 
 ### Running the Baseline
 
@@ -285,28 +277,6 @@ Key findings:
 | The-Internet | Elemental Selenium | 20 | Broken forms, dynamic loading |
 | Toolshop | Practice SW Testing | 15 | Filter, search, checkout bugs |
 
-## How It Works
-
-GhostQA uses the ReAct framework (Yao et al., 2023) to interleave reasoning with actions:
-
-1. **Observe**: Take a screenshot and run DOM audits (accessibility, security, layout checks)
-2. **Think**: The LLM reasons about the full run context and decides what to do next
-3. **Act**: Execute the chosen action in the browser (click, fill form, navigate, scroll)
-4. **Detect**: Identify bugs from both visual analysis and DOM signals
-5. **Record**: Log the step into RunMemory with URL, action, result, bugs, and observations
-6. **Compress**: Every 10 steps, the LLM compresses older steps into a narrative summary
-7. **Loop**: Repeat for the configured number of steps
-8. **Insights**: At the end, generate run insights (unique findings, coverage gaps, next steps)
-9. **Report**: Save structured JSON/HTML reports with all detected bugs and insights
-
-The DOM context engine injects JavaScript into the page to extract signals that are invisible in screenshots, things like missing ARIA labels, insecure form configurations, broken links, and layout violations.
-
-**Turbo mode** combines vision analysis, DOM context, bug detection, and action selection into a single LLM call per step. This cuts cost in half compared to Standard mode while maintaining the same F1 score.
-
-**Run Memory** keeps the agent aware of its entire exploration history. Instead of only seeing the last few steps, the agent gets a compressed summary of all older steps plus full details of recent ones. This prevents revisiting pages, re-testing forms, or missing connections between findings.
-
-**Cross-run Context** persists between scans. After each run, the agent generates insights about what it found and what it missed. The next scan loads these insights automatically, so the agent picks up where it left off and focuses on unexplored areas.
-
 ## Configuration
 
 All configuration can be done through environment variables or CLI flags:
@@ -319,6 +289,38 @@ All configuration can be done through environment variables or CLI flags:
 | `ANTHROPIC_API_KEY` | - | Anthropic Claude API key |
 | `MODEL` | Provider default | Specific model to use |
 | `DEBUG` | `false` | Enable debug logging |
+
+## Project Structure
+
+```
+ghostqa/
+├── ghostqa/                  # Main package
+│   ├── agent.py              # Core agent loop (ReAct framework)
+│   ├── browser.py            # Playwright browser controller
+│   ├── context.py            # Cross-run persistent context
+│   ├── run_memory.py         # Within-run full context memory
+│   ├── vision.py             # Screenshot analysis
+│   ├── reasoning.py          # Action reasoning and planning
+│   ├── reporter.py           # Bug report generation
+│   ├── baseline.py           # Random baseline agent (no LLM)
+│   ├── config.py             # Configuration management
+│   ├── logger.py             # Logging utilities
+│   ├── utils.py              # Helper functions
+│   ├── __main__.py           # CLI entry point
+│   └── llm/                  # LLM provider integrations
+│       ├── base.py           # Abstract LLM interface
+│       ├── gemini.py         # Google Gemini provider
+│       ├── claude.py         # Anthropic Claude provider
+│       ├── openai_provider.py # OpenAI GPT provider
+│       └── factory.py        # Provider factory
+├── benchmarks/
+│   └── ground_truth.json     # 100 manually curated bugs across 5 apps
+├── evaluate.py               # Evaluation script (P/R/F1 computation)
+├── run_evaluation.py         # Batch evaluation runner
+├── requirements.txt          # Python dependencies
+├── .env.example              # Environment variable template
+└── reports/                  # Generated bug reports (gitignored)
+```
 
 ## Limitations
 
