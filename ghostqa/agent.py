@@ -72,6 +72,11 @@ class GhostQAAgent:
         self.consecutive_same_target: int = 0  # Anti-stuck counter
         self.last_target: str = ""  # Last action target for anti-stuck
         
+        # Domain guard: prevent navigating away from target app
+        self.target_host: str = urlparse(config.url).hostname or ""
+        self.last_good_url: str = config.url  # Last URL on the target domain
+        self.external_redirect_targets: set = set()  # Elements that caused external redirects
+        
         # Persistent scan context — same parent as reports dir
         reports_base = config.get_output_path().parent
         context_dir = reports_base / "context"
@@ -424,6 +429,11 @@ class GhostQAAgent:
         # 5. EXECUTE
         success = await self._execute_action(action)
         
+        # Domain guard: redirect back if agent left the target app
+        was_redirected = await self._check_domain_guard(action)
+        if was_redirected:
+            success = False  # Mark the action as failed
+        
         # Auto-dismiss modals after navigation to a new page
         if action.action_type == "navigate" and success:
             await self._auto_dismiss_modals()
@@ -689,6 +699,11 @@ class GhostQAAgent:
         # 4. EXECUTE
         success = await self._execute_action(action)
         
+        # Domain guard: redirect back if agent left the target app
+        was_redirected = await self._check_domain_guard(action)
+        if was_redirected:
+            success = False
+        
         # Track history
         self.history.append({
             "step": step + 1,
@@ -752,6 +767,41 @@ class GhostQAAgent:
                 self._last_filled_password = action.value
         
         return True
+    
+    async def _check_domain_guard(self, action: Action) -> bool:
+        """Check if the agent has left the target domain after an action.
+        
+        If the current URL's host doesn't match the target host, navigate
+        back to the last known good URL and mark the triggering element
+        as a failed target so the agent avoids it.
+        
+        Returns:
+            True if a redirect-back occurred, False if still on target domain.
+        """
+        try:
+            current_url = await self.browser.get_url()
+            current_host = urlparse(current_url).hostname or ""
+            
+            if current_host and current_host != self.target_host:
+                # Agent left the target application
+                redirect_target = f"{action.action_type}: {action.target}"
+                self.external_redirect_targets.add(redirect_target)
+                self.failed_targets.append(action.target or "")
+                
+                console.print(
+                    f"[red bold]🚫 Domain guard: Agent redirected to {current_host} "
+                    f"(target: {self.target_host}). Navigating back to {self.last_good_url}[/red bold]"
+                )
+                
+                await self.browser.goto(self.last_good_url)
+                await self._auto_dismiss_modals()
+                return True
+            else:
+                # Still on target domain, update last good URL
+                self.last_good_url = current_url
+                return False
+        except Exception:
+            return False
     
     async def _execute_action(self, action: Action) -> bool:
         """Execute an action and return success status."""
