@@ -6,6 +6,7 @@ from previous scans and avoid repeating work.
 """
 
 import base64
+import json
 import re
 from pathlib import Path
 from datetime import datetime
@@ -32,6 +33,8 @@ class ScanContext:
         self.observations: List[str] = []
         self.credentials: List[Dict[str, str]] = []
         # credentials = [{ "email": "...", "password": "...", "status": "working|failed|untested", "obtained_via": "..." }]
+        self.run_insights: List[Dict[str, Any]] = []
+        # run_insights = [{ "run_date": "...", "unique_findings": [...], "areas_needing_attention": [...], ... }]
 
     @staticmethod
     def url_to_context_name(url: str) -> str:
@@ -286,7 +289,91 @@ CONTEXT RULES:
             lines.append("3. If saved credentials also fail, register a NEW account as last resort.")
             lines.append("- Do NOT re-register with an email already listed above.")
 
+        # Include latest run insights so the agent knows what to focus on
+        if self.run_insights:
+            latest = self.run_insights[-1]
+            lines.append(f"\nLAST RUN INSIGHTS ({latest.get('run_date', '?')}, {latest.get('model_used', '?')}):")
+            suggestions = latest.get("suggested_next_steps", [])
+            if suggestions:
+                lines.append("Suggested next steps:")
+                for s in suggestions[:5]:
+                    lines.append(f"  - {s}")
+            gaps = latest.get("coverage_gaps", [])
+            if gaps:
+                lines.append("Coverage gaps to address:")
+                for g in gaps[:5]:
+                    lines.append(f"  - {g}")
+            attention = latest.get("areas_needing_attention", [])
+            if attention:
+                lines.append("Areas needing attention:")
+                for a in attention[:5]:
+                    lines.append(f"  - {a}")
+
         return "\n".join(lines)
+
+    async def generate_run_insights(
+        self,
+        provider,
+        run_memory,
+        model_used: str = "",
+        steps_taken: int = 0,
+        bugs_found: int = 0,
+    ) -> Dict[str, Any]:
+        """Generate structured insights at the end of a run using the LLM.
+        
+        The insights capture what was unique about this run and what the
+        next run should focus on. This helps the agent learn across runs.
+        """
+        from ghostqa.llm.base import Message
+        from ghostqa.utils import parse_json_response
+
+        full_context = run_memory.get_full_context()
+        run_stats = run_memory.get_run_stats()
+
+        messages = [
+            Message(role="system", content=(
+                "You are a QA testing analyst. Analyze the completed scan run and produce "
+                "structured insights. Be specific and actionable. Focus on what was unique, "
+                "what areas need more testing, and concrete next steps for the next scan run.\n\n"
+                "Respond in JSON with these fields:\n"
+                '{\n'
+                '  "unique_findings": ["specific finding 1", ...],\n'
+                '  "areas_needing_attention": ["area 1", ...],\n'
+                '  "suggested_next_steps": ["step 1", ...],\n'
+                '  "coverage_gaps": ["gap 1", ...],\n'
+                '  "key_observations": ["observation 1", ...]\n'
+                '}'
+            )),
+            Message(role="user", content=(
+                f"Here is the complete context of the scan run:\n\n"
+                f"{full_context}\n\n"
+                f"Run stats: {json.dumps(run_stats)}\n\n"
+                f"Produce insights for this completed run."
+            )),
+        ]
+
+        response = await provider.chat(
+            messages=messages,
+            json_mode=True,
+            max_tokens=1000,
+        )
+
+        insights = parse_json_response(response.content)
+
+        # Add metadata
+        from datetime import datetime
+        insights["run_date"] = datetime.now().isoformat()
+        insights["model_used"] = model_used
+        insights["steps_taken"] = steps_taken
+        insights["bugs_found"] = bugs_found
+
+        # Store in context
+        self.run_insights.append(insights)
+        # Keep only last 5 runs of insights to prevent unbounded growth
+        if len(self.run_insights) > 5:
+            self.run_insights = self.run_insights[-5:]
+
+        return insights
 
     # --- Markdown parsing/generation ---
 
@@ -349,6 +436,19 @@ CONTEXT RULES:
                 lines.append(f"- [{img.stem}]({ctx_name}/{img.name})")
             lines.append("")
 
+        # Run Insights
+        if self.run_insights:
+            lines.append("## Run Insights")
+            for insight in self.run_insights:
+                lines.append(f"### Run: {insight.get('run_date', 'unknown')} ({insight.get('model_used', '?')}, {insight.get('steps_taken', '?')} steps, {insight.get('bugs_found', '?')} bugs)")
+                for key in ["unique_findings", "areas_needing_attention", "suggested_next_steps", "coverage_gaps", "key_observations"]:
+                    items = insight.get(key, [])
+                    if items:
+                        lines.append(f"**{key.replace('_', ' ').title()}:**")
+                        for item in items:
+                            lines.append(f"- {item}")
+                lines.append("")
+
         return "\n".join(lines)
 
     def _parse_markdown(self, content: str) -> None:
@@ -378,6 +478,28 @@ CONTEXT RULES:
                 current_section = "screenshots"
             elif line == "## Saved Credentials":
                 current_section = "credentials"
+            elif line == "## Run Insights":
+                current_section = "insights"
+            elif line.startswith("### Run:") and current_section == "insights":
+                # Parse run header: "### Run: 2026-04-25T22:00:00 (claude-opus-4-7, 50 steps, 12 bugs)"
+                match = re.match(r"^### Run:\s*(\S+)\s*\(([^,]+),\s*(\d+) steps,\s*(\d+) bugs\)", line)
+                if match:
+                    self.run_insights.append({
+                        "run_date": match.group(1),
+                        "model_used": match.group(2),
+                        "steps_taken": int(match.group(3)),
+                        "bugs_found": int(match.group(4)),
+                        "unique_findings": [],
+                        "areas_needing_attention": [],
+                        "suggested_next_steps": [],
+                        "coverage_gaps": [],
+                        "key_observations": [],
+                    })
+                    current_section = "insights_detail"
+            elif line.startswith("**") and line.endswith(":**") and current_section == "insights_detail":
+                # Parse field header like "**Unique Findings:**"
+                field_name = line.strip("*:").strip().lower().replace(" ", "_")
+                current_section = f"insights_{field_name}"
             elif line.startswith("## "):
                 current_section = None
             elif line.startswith("- ") and current_section:
@@ -420,3 +542,9 @@ CONTEXT RULES:
                             "status": parts[2] if len(parts) > 2 else "untested",
                             "obtained_via": parts[3] if len(parts) > 3 else "unknown",
                         })
+                elif current_section and current_section.startswith("insights_"):
+                    # Append to the correct field of the latest run insight
+                    if self.run_insights:
+                        field = current_section.replace("insights_", "")
+                        if field in self.run_insights[-1]:
+                            self.run_insights[-1][field].append(item)

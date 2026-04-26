@@ -5,12 +5,15 @@ LLM-powered decision making for exploration and testing strategies.
 Supports Gemini, OpenAI, and Claude via the LLM abstraction layer.
 """
 
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, TYPE_CHECKING
 from pydantic import BaseModel
 import json
 
 from ghostqa.llm.base import LLMProvider, Message
 from ghostqa.utils import parse_json_response
+
+if TYPE_CHECKING:
+    from ghostqa.run_memory import RunMemory
 
 
 VALID_ACTIONS = ("click", "fill", "navigate", "scroll", "press", "wait", "done", "fill_form")
@@ -43,6 +46,7 @@ class ReasoningEngine:
         phase: str = "explore",
         discovered_forms: List[Dict[str, Any]] = None,
         context_summary: str = "",
+        run_memory: Optional["RunMemory"] = None,
     ) -> Action:
         """
         Decide the next action based on current page state, screenshot, and history.
@@ -57,8 +61,11 @@ class ReasoningEngine:
         else:
             system_prompt = self._get_test_prompt(discovered_forms or [])
 
-        # Build context
-        history_summary = self._summarize_history(history)
+        # Build context: prefer full run memory over sliding window
+        if run_memory:
+            history_summary = run_memory.get_full_context()
+        else:
+            history_summary = self._summarize_history(history)
         explored_summary = ""
         if explored_elements:
             explored_summary = f"\n\nElements already interacted with (DO NOT click these again):\n- " + "\n- ".join(explored_elements[-15:])
@@ -177,6 +184,7 @@ RULES FOR USER INSTRUCTIONS:
         discovered_forms: List[Dict[str, Any]] = None,
         context_summary: str = "",
         page_context: Dict[str, Any] = None,
+        run_memory: Optional["RunMemory"] = None,
     ) -> tuple:
         """
         TURBO MODE: Single unified LLM call that sees the screenshot,
@@ -188,7 +196,11 @@ RULES FOR USER INSTRUCTIONS:
         Returns:
             (Action, List[dict]) — the next action and any bugs found
         """
-        history_summary = self._summarize_history(history)
+        # Prefer full run memory over sliding window
+        if run_memory:
+            history_summary = run_memory.get_full_context()
+        else:
+            history_summary = self._summarize_history(history)
         explored_summary = ""
         if explored_elements:
             explored_summary = f"\n\nElements already interacted with (DO NOT click these again):\n- " + "\n- ".join(explored_elements[-15:])

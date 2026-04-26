@@ -17,6 +17,7 @@ from ghostqa.vision import VisionEngine
 from ghostqa.reasoning import ReasoningEngine, Action
 from ghostqa.reporter import Reporter, Bug
 from ghostqa.context import ScanContext
+from ghostqa.run_memory import RunMemory
 from ghostqa.llm import create_provider
 from ghostqa.logger import setup_logger, console
 
@@ -51,6 +52,7 @@ class GhostQAAgent:
         self.reporter = Reporter(config)
         
         self.history: List[Dict[str, Any]] = []
+        self.run_memory = RunMemory()  # Full run context accumulator
         self.visited_states: set = set()
         self.explored_elements: List[str] = []  # Track what we've interacted with
         self.failed_targets: List[str] = []  # P1: Track failed click targets
@@ -168,6 +170,27 @@ class GhostQAAgent:
                             )
                             break
                         continue
+            
+            # Generate run insights via LLM before saving context
+            run_insights = {}
+            try:
+                provider = create_provider(
+                    provider=self.config.llm_provider,
+                    api_key=self.config.get_api_key(),
+                    model=self.config.model,
+                )
+                run_insights = await self.scan_context.generate_run_insights(
+                    provider=provider,
+                    run_memory=self.run_memory,
+                    model_used=self.config.model or self.config.llm_provider,
+                    steps_taken=self.reporter.steps_taken,
+                    bugs_found=len(self.reporter.bugs),
+                )
+                self.reporter.run_insights = run_insights
+                console.print(f"[cyan]💡 Run insights generated ({len(run_insights.get('unique_findings', []))} findings, {len(run_insights.get('suggested_next_steps', []))} suggestions)[/cyan]")
+            except Exception as e:
+                if self.config.debug:
+                    self.log.debug(f"Run insights generation failed: {e}")
             
             # Save context before browser stops
             self.scan_context.update_from_scan(
@@ -373,6 +396,7 @@ class GhostQAAgent:
                 phase=self.phase,
                 discovered_forms=self.discovered_forms,
                 context_summary=self.scan_context.get_context_summary(),
+                run_memory=self.run_memory,
             )
         
         if self.config.debug:
@@ -440,6 +464,31 @@ class GhostQAAgent:
         # P1: Track failed targets so reasoning engine avoids them
         if not success and action.target and action.action_type == "click":
             self.failed_targets.append(action.target)
+        
+        # Record step in full run memory
+        bugs_this_step = [b.description for b in self.reporter.bugs[-3:]]  # recent bugs
+        self.run_memory.record_step(
+            step_number=step + 1,
+            url=current_url,
+            action_type=action.action_type,
+            target=action.target or "",
+            value=action.value or "",
+            reasoning=action.reasoning or "",
+            success=success,
+            bugs_found=bugs_this_step if bugs_this_step else [],
+            observations=action.thinking or "",
+        )
+        
+        # Compress run memory periodically
+        if self.run_memory.needs_compression():
+            provider = create_provider(
+                provider=self.config.llm_provider,
+                api_key=self.config.get_api_key(),
+                model=self.config.model,
+            )
+            await self.run_memory.compress(provider)
+            if self.config.debug:
+                self.log.debug(f"📝 Run memory compressed (covers steps 1-{self.run_memory.last_compressed_step})")
         
         # Capture credentials from fill actions (email/password fields)
         if action.action_type == "fill" and action.value and action.target:
@@ -595,6 +644,7 @@ class GhostQAAgent:
                 discovered_forms=self.discovered_forms,
                 context_summary=self.scan_context.get_context_summary(),
                 page_context=page_context,
+                run_memory=self.run_memory,
             )
         
         # Report bugs from unified call
@@ -667,6 +717,31 @@ class GhostQAAgent:
         
         if not success and action.target and action.action_type == "click":
             self.failed_targets.append(action.target)
+        
+        # Record step in full run memory
+        bugs_this_step = [b.get("description", "") for b in bugs_from_llm] if bugs_from_llm else []
+        self.run_memory.record_step(
+            step_number=step + 1,
+            url=current_url,
+            action_type=action.action_type,
+            target=action.target or "",
+            value=action.value or "",
+            reasoning=action.reasoning or "",
+            success=success,
+            bugs_found=bugs_this_step,
+            observations=action.thinking or "",
+        )
+        
+        # Compress run memory periodically
+        if self.run_memory.needs_compression():
+            provider = create_provider(
+                provider=self.config.llm_provider,
+                api_key=self.config.get_api_key(),
+                model=self.config.model,
+            )
+            await self.run_memory.compress(provider)
+            if self.config.debug:
+                self.log.debug(f"📝 Run memory compressed (covers steps 1-{self.run_memory.last_compressed_step})")
         
         # Credential tracking
         if action.action_type in ("fill", "fill_form") and action.value and action.target:

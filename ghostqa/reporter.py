@@ -197,6 +197,7 @@ class Reporter:
         from ghostqa.llm.factory import DEFAULT_MODELS
         self.model_name = config.model or DEFAULT_MODELS.get(config.llm_provider.lower(), "unknown")
         self._video_path: Optional[str] = None
+        self.run_insights: dict = {}  # Set by agent at end of scan
 
     @staticmethod
     def _detect_category(context: str) -> str:
@@ -447,7 +448,8 @@ class Reporter:
                 "high": sum(1 for b in self.bugs if b.severity == "high"),
                 "medium": sum(1 for b in self.bugs if b.severity == "medium"),
                 "low": sum(1 for b in self.bugs if b.severity == "low"),
-            }
+            },
+            "run_insights": self.run_insights if self.run_insights else None,
         }, indent=2)
     
     def save_reports(self) -> Path:
