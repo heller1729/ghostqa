@@ -15,6 +15,7 @@ It finds visual bugs, accessibility violations, functional issues, and even secu
 - Generates structured JSON/HTML reports with bug type, severity, description, reproduction steps, and confidence scores
 - Maintains full run context across all steps so the agent never forgets what it already did
 - Generates run insights at the end of each scan so the next scan knows what to focus on
+- Domain guard prevents the agent from leaving the target application (auto-redirects back if an external link is clicked)
 - Supports 6 models across 3 providers: Google Gemini, Anthropic Claude, and OpenAI GPT
 - Includes an evaluation pipeline to benchmark agent performance against ground truth
 
@@ -35,6 +36,8 @@ GhostQA uses the ReAct framework (Yao et al., 2023) to interleave reasoning with
 The DOM context engine injects JavaScript into the page to extract signals that are invisible in screenshots, things like missing ARIA labels, insecure form configurations, broken links, and layout violations.
 
 **Turbo mode** combines vision analysis, DOM context, bug detection, and action selection into a single LLM call per step. This cuts cost in half compared to Standard mode while maintaining the same F1 score.
+
+**Domain guard** keeps the agent on the target application. If a click leads to an external domain (like a privacy policy link pointing to a government website), the agent detects the host mismatch, navigates back to the last page on the target domain, and blacklists that element so it never clicks it again.
 
 ## System Architecture
 
