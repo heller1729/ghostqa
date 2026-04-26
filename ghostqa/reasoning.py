@@ -47,6 +47,7 @@ class ReasoningEngine:
         discovered_forms: List[Dict[str, Any]] = None,
         context_summary: str = "",
         run_memory: Optional["RunMemory"] = None,
+        action_attempt_counts: Dict[str, int] = None,
     ) -> Action:
         """
         Decide the next action based on current page state, screenshot, and history.
@@ -185,6 +186,7 @@ RULES FOR USER INSTRUCTIONS:
         context_summary: str = "",
         page_context: Dict[str, Any] = None,
         run_memory: Optional["RunMemory"] = None,
+        action_attempt_counts: Dict[str, int] = None,
     ) -> tuple:
         """
         TURBO MODE: Single unified LLM call that sees the screenshot,
@@ -237,23 +239,33 @@ RULES FOR USER INSTRUCTIONS:
         if recent_scroll_count >= 2:
             scroll_warning = "\n⚠️ WARNING: You have scrolled multiple times recently. You MUST now click a link, button, or fill a form. Do NOT scroll again."
 
-        system_prompt = f"""You are GhostQA, an autonomous web testing agent. You can SEE the page screenshot directly.
+        blocked_actions = ""
+        if action_attempt_counts:
+            blocked = [k for k, v in action_attempt_counts.items() if v >= 3]
+            if blocked:
+                blocked_actions = "\n⛔ BLOCKED ACTIONS (DO NOT TRY THESE):\n- " + "\n- ".join(blocked)
 
-Your PRIMARY job is to FIND BUGS. Your secondary job is to navigate to new pages to find more bugs.
+        system_prompt = f"""You are GhostQA, an autonomous web testing agent. You can SEE the page screenshot directly.
 
 {"🎯 USER FOCUS (HIGHEST PRIORITY): " + goal if goal else ""}
 
-=== YOUR LAST ACTIONS (do NOT repeat these) ===
+=== RECALL (PREVIOUS STEP CONTEXT) ===
 {recent_actions if recent_actions else "(first step)"}
-{scroll_warning}
+{scroll_warning}{blocked_actions}
 
 === STRICT RULES ===
-1. EVERY step MUST output a MEANINGFUL ACTION (click, fill, navigate, press). Scroll is only acceptable on a brand-new page you haven't scrolled yet.
-2. NEVER repeat the same action as your last step. If you just scrolled, you MUST now click or navigate.
-3. PRIORITIZE actions in this order: fill form fields > click buttons/links > navigate to new pages > scroll (LAST RESORT).
-4. If you see forms on the page, FILL THEM with test data before doing anything else.
-5. If you've already scrolled this page, pick a link or button from the DOM elements list and CLICK it.
-6. If nothing interesting is left on this page, NAVIGATE to a new unvisited page.
+1. DO NOT HALLUCINATE SUCCESS. If your last action was "fill" but the screenshot shows the field is empty, it FAILED. Try a different selector.
+2. DO NOT LEAVE THE APP. Never click links that lead to external sites (GitHub, social media, privacy policies). Stay on the target application.
+3. NEVER repeat the same action as your last step. If you just scrolled, you MUST now click or navigate.
+4. If you see forms on the page, FILL THEM with test data or payloads before doing anything else.
+5. NO RANDOM CLICKS: If your goal is to log in, do NOT click around randomly. Focus ONLY on filling the login form and clicking the submit button.
+
+=== FORM FILLING & SQL INJECTION (CRITICAL) ===
+- EXACT PAYLOADS: If the user provides an SQL injection payload (e.g. `' OR 1=1--`), you MUST preserve the EXACT string. Do NOT strip the leading single quote `'`. Your JSON value should be exactly `"' OR 1=1--"`.
+- You MUST use precise CSS selectors for form fields. Do NOT use placeholder text like "Email*".
+- Examples of GOOD selectors: `#email`, `input[type="email"]`, `input[name="password"]`, `.mat-input-element`
+- For Juice Shop specifically: the email field is `#email`, password is `#password`, login button is `#loginButton`.
+- If a fill action fails, try falling back to generic type selectors: `input[type="email"]` or `input[type="password"]`.
 
 EVERY STEP — do this in order:
 1. SCAN the screenshot for visual bugs
@@ -261,14 +273,11 @@ EVERY STEP — do this in order:
 3. Pick a NEW action you haven't done before (click a new element, fill a form, navigate to a new page)
 
 BUG DETECTION CHECKLIST:
-□ PRICES: $0, negative, decimal errors, math errors, suspicious values
-□ LAYOUT: Overlapping, misaligned, broken grid, inconsistent spacing
-□ IMAGES: Broken, missing, stretched, wrong aspect ratio, placeholder
-□ TEXT: Typos, truncated, overflow, lorem ipsum, mixed fonts, wrong language
-□ COLORS: Low contrast, inconsistent theme colors
-□ FORMS: Missing labels, wrong field types, placeholder-as-label, no validation
-□ SECURITY: Autocomplete on passwords, credentials exposed, weak CAPTCHA
-□ ACCESSIBILITY: Missing alt text, missing ARIA labels, no landmarks, no h1
+□ PRICES: $0, negative, decimal errors, math errors
+□ LAYOUT: Overlapping elements, misaligned, broken grid
+□ IMAGES: Broken, missing, placeholder
+□ SECURITY: Autocomplete on passwords, credentials exposed
+□ ACCESSIBILITY: Missing alt text, no landmarks, missing ARIA labels
 
 SEVERITY: critical (data loss/security) > high (broken features) > medium (visual) > low (cosmetic)
 
@@ -376,19 +385,12 @@ SCROLLING RULE (CRITICAL):
 - After scrolling, continue exploring the page's interactive elements.
 
 COVERAGE CHECKLIST — mentally track which you've done:
-□ Home/product listing — browse products, scroll to see all items
-□ Product detail — click on at least ONE product card to open its detail page
-□ Search — use the search bar to search for something
-□ Add to cart — add a product to the shopping cart
-□ Cart/basket — visit the cart and see what's inside
-□ Login page — visit the login form (try "Forgot password?" link too)
-□ Registration — visit the registration form and fill it out
-□ Contact/feedback — visit the contact or feedback page
-□ About/info — visit about, terms, legal, or info pages
-□ User profile/settings — if logged in, visit profile, orders, account settings
-□ Any sidebar menus, dropdown menus, or hamburger menus — open and explore
+[MUST VISIT]: Login, Register, Main content/Products
+[SHOULD VISIT]: Search, Cart, Profile
+[NICE TO HAVE]: About, Contact, Settings
 
 RULES FOR EXPLORATION:
+- STAY ON THIS APP. Never click links that lead to external sites (GitHub, social media, privacy policy).
 - Explore like a CURIOUS USER, not a robot. Click things that look interesting.
 - Visit ALL main navigation links before diving deep into any one page.
 - When you see a form, fill it with REALISTIC data (real-looking name, email, address) — NOT attack payloads.
@@ -397,7 +399,7 @@ RULES FOR EXPLORATION:
 - Try the "Forgot Password?" link if you see it — it's a real user flow.
 - NEVER repeat an action you already took — check the action history.
 - If you already explored an element (listed in explored_elements), skip it.
-- Use CSS selectors from dom_buttons/dom_links when text labels are empty or unclear.
+- Use precise CSS selectors (e.g. `#email`, `input[name="password"]`) from dom_buttons/dom_links. Do NOT use placeholder text.
 - Do NOT try security attacks (SQL injection, XSS, etc.) during this phase.
 
 MODAL/OVERLAY HANDLING (CRITICAL — do this FIRST):
@@ -482,11 +484,15 @@ MOVE-ON RULE:
 - Navigate to untested pages. Use the forms list above to track progress.
 
 RULES:
+- STAY ON THIS APP. Never click links that lead to external sites (GitHub, social media, privacy policy).
 - Focus on FORMS and INPUT FIELDS — that's where vulnerabilities hide.
 - After each attack, check if the page shows an error, accepts it, or crashes.
 - Navigate to pages with forms you haven't tested yet.
-- Use CSS selectors when text labels are unclear.
+- Use precise CSS selectors (e.g. `#email`, `input[name="password"]`) from dom_buttons/dom_links. Do NOT use placeholder text.
 - Try to LOG IN using exploitation — this is a high-value target.
+- For fill_form, structure the fields array with exact CSS selectors. Example:
+  `"fields": [{"target": "#email", "value": "' OR 1=1 --"}, {"target": "#password", "value": "test123"}]`
+- After an SQL injection attempt, CHECK the screenshot. If you see a dashboard or user profile instead of a login page, the injection SUCCEEDED.
 
 Respond in JSON format:
 {{

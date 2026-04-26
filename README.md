@@ -24,20 +24,19 @@ It finds visual bugs, accessibility violations, functional issues, and even secu
 GhostQA uses the ReAct framework (Yao et al., 2023) to interleave reasoning with actions. Each step follows this cycle:
 
 1. **Observe**: Take a screenshot of the current page and run DOM audits (accessibility, security, layout checks)
-2. **Think**: The LLM reasons about the full run context and decides what to do next
-3. **Act**: Execute the chosen action in the browser (click, fill form, navigate, scroll)
-4. **Detect**: Identify bugs from both visual analysis and DOM signals
-5. **Record**: Log the step into RunMemory with URL, action, result, bugs, and observations
-6. **Compress**: Every 10 steps, the LLM compresses older steps into a narrative summary
-7. **Loop**: Repeat for the configured number of steps
-8. **Insights**: At the end, generate run insights (unique findings, coverage gaps, next steps)
-9. **Report**: Save structured JSON/HTML reports with all detected bugs and insights
-
-The DOM context engine injects JavaScript into the page to extract signals that are invisible in screenshots, things like missing ARIA labels, insecure form configurations, broken links, and layout violations.
+2. **Recall**: The agent checks its `action_attempt_counts` to see if it is stuck in an infinite loop and blocks actions that have failed repeatedly.
+3. **Think**: The LLM reasons about the full run context, recalled failures, and decides what to do next
+4. **Act**: Execute the chosen action in the browser. Uses `smart_fill` for robust form interactions (bypassing Angular Material limitations) and auto-dismisses blocking modals.
+5. **Detect**: Identify bugs from both visual analysis and DOM signals
+6. **Record**: Log the step into RunMemory with URL, action, result, bugs, and observations
+7. **Compress**: Every 10 steps, the LLM compresses older steps into a narrative summary
+8. **Loop**: Repeat for the configured number of steps
+9. **Insights**: At the end, generate run insights (unique findings, coverage gaps, next steps)
+10. **Report**: Save structured JSON/HTML reports with all detected bugs and insights
 
 **Turbo mode** combines vision analysis, DOM context, bug detection, and action selection into a single LLM call per step. This cuts cost in half compared to Standard mode while maintaining the same F1 score.
 
-**Domain guard** keeps the agent on the target application. If a click leads to an external domain (like a privacy policy link pointing to a government website), the agent detects the host mismatch, navigates back to the last page on the target domain, and blacklists that element so it never clicks it again.
+**Domain guard** keeps the agent on the target application. It preemptively blocks known external redirect links and also intercepts post-navigation domain changes, returning the agent to safety if it wanders off-app.
 
 ## System Architecture
 
@@ -52,20 +51,21 @@ flowchart TB
     subgraph Agent["GhostQA Agent Loop (ReAct)"]
         direction TB
         OBS["1. OBSERVE\nScreenshot + DOM Audit"]
-        THINK["2. THINK\nVLM Reasoning + Run Memory"]
-        ACT["3. ACT\nClick / Fill / Navigate / Scroll"]
-        DETECT["4. DETECT\nBug Identification"]
-        RECORD["5. RECORD\nStep -> Run Memory"]
-        COMPRESS["6. COMPRESS\nLLM Summary (every 10 steps)"]
+        RECALL["2. RECALL\nAnti-Loop & Action Tracking"]
+        THINK["3. THINK\nVLM Reasoning"]
+        ACT["4. ACT\nClick / Smart Fill / Navigate / Scroll"]
+        DETECT["5. DETECT\nBug Identification"]
+        RECORD["6. RECORD\nStep -> Run Memory"]
+        COMPRESS["7. COMPRESS\nLLM Summary (every 10 steps)"]
 
-        OBS --> THINK --> ACT --> DETECT --> RECORD --> COMPRESS
+        OBS --> RECALL --> THINK --> ACT --> DETECT --> RECORD --> COMPRESS
         COMPRESS -->|"Loop until\nmax steps"| OBS
     end
 
     subgraph Browser["Playwright Browser"]
         PAGE[Page Renderer]
         DOM[DOM Extractor]
-        JS[JS Injection Engine]
+        JS[JS Injection & Overlays]
     end
 
     subgraph Memory["Memory System"]
@@ -198,10 +198,14 @@ If you have a previous scan context saved and want to ignore it:
 python -m ghostqa scan http://localhost:3000 --turbo --provider google --model gemini-2.5-flash --fresh
 ```
 
-You can also give the agent focus instructions to test a specific area:
+You can also give the agent focus instructions to test a specific area or execute an exploit:
 
 ```bash
+# General focus on an area
 python -m ghostqa scan http://localhost:3000 --turbo --provider google --model gemini-2.5-flash --context "focus on the checkout flow and payment forms"
+
+# Executing an explicit SQL injection
+python -m ghostqa scan http://localhost:3000 --turbo --provider google --model gemini-2.5-flash --max-steps 15 --no-headless --debug --fresh --context "Go to /#/login. Fill email with ' OR 1=1-- and password with test123. Click Log in."
 ```
 
 ### CLI Flags Reference

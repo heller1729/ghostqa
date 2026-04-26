@@ -130,6 +130,23 @@ class BrowserController:
             return True
         except Exception:
             return False
+            
+    async def smart_fill(self, selector: str, value: str) -> bool:
+        """Fill a form field by clicking, clearing, and typing. Works with Angular/React/Vue."""
+        try:
+            element = self._page.locator(selector).first
+            await element.click(timeout=3000)
+            await asyncio.sleep(0.2)
+            await self._page.keyboard.press("Control+a")
+            await element.type(value, delay=30)
+            return True
+        except Exception:
+            # Fallback to standard fill
+            try:
+                await self._page.fill(selector, value, timeout=3000)
+                return True
+            except Exception:
+                return False
     
     async def type_text(self, selector: str, value: str, delay: int = 50) -> bool:
         """Type text into a field with delay (more human-like)."""
@@ -170,12 +187,19 @@ class BrowserController:
         """Get all links on the page."""
         links = await self._page.evaluate("""
             () => {
-                const links = [];
+                const currentHost = window.location.hostname;
                 document.querySelectorAll('a[href]').forEach(a => {
-                    links.push({
-                        href: a.href,
-                        text: a.innerText.trim(),
-                    });
+                    try {
+                        const url = new URL(a.href, window.location.href);
+                        if (url.hostname === currentHost && !url.href.toLowerCase().includes('redirect')) {
+                            links.push({
+                                href: a.href,
+                                text: a.innerText.trim(),
+                            });
+                        }
+                    } catch(e) {
+                        // Ignore parsing errors
+                    }
                 });
                 return links;
             }

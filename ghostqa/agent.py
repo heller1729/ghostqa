@@ -76,6 +76,8 @@ class GhostQAAgent:
         self.target_host: str = urlparse(config.url).hostname or ""
         self.last_good_url: str = config.url  # Last URL on the target domain
         self.external_redirect_targets: set = set()  # Elements that caused external redirects
+        self.blocked_redirect_urls: set = set() # Preemptively block external redirect URLs
+        self.action_attempt_counts: Dict[str, int] = {} # Track repeated action attempts
         
         # Persistent scan context — same parent as reports dir
         reports_base = config.get_output_path().parent
@@ -402,6 +404,7 @@ class GhostQAAgent:
                 discovered_forms=self.discovered_forms,
                 context_summary=self.scan_context.get_context_summary(),
                 run_memory=self.run_memory,
+                action_attempt_counts=self.action_attempt_counts,
             )
         
         if self.config.debug:
@@ -427,7 +430,18 @@ class GhostQAAgent:
                 return False  # Test phase done → stop scan
         
         # 5. EXECUTE
-        success = await self._execute_action(action)
+        # Pre-execution check: block actions that have been tried too many times
+        action_key = f"{action.action_type}:{action.target}"
+        self.action_attempt_counts[action_key] = self.action_attempt_counts.get(action_key, 0) + 1
+        
+        if self.action_attempt_counts[action_key] >= 3:
+            if self.config.debug:
+                self.log.debug(f"[BLOCKED] Action {action_key} has been tried 3+ times. Skipping.")
+            success = False
+            action.reasoning = f"BLOCKED: Tried {action_key} 3+ times, forcing skip."
+        else:
+            success = await self._execute_action(action)
+        
         
         # Domain guard: redirect back if agent left the target app
         was_redirected = await self._check_domain_guard(action)
@@ -655,6 +669,7 @@ class GhostQAAgent:
                 context_summary=self.scan_context.get_context_summary(),
                 page_context=page_context,
                 run_memory=self.run_memory,
+                action_attempt_counts=self.action_attempt_counts,
             )
         
         # Report bugs from unified call
@@ -697,7 +712,17 @@ class GhostQAAgent:
             self._report_console_errors(new_errors, current_url)
         
         # 4. EXECUTE
-        success = await self._execute_action(action)
+        action_key = f"{action.action_type}:{action.target}"
+        self.action_attempt_counts[action_key] = self.action_attempt_counts.get(action_key, 0) + 1
+        
+        if self.action_attempt_counts[action_key] >= 3:
+            if self.config.debug:
+                self.log.debug(f"[BLOCKED] Action {action_key} has been tried 3+ times. Skipping.")
+            success = False
+            action.reasoning = f"BLOCKED: Tried {action_key} 3+ times, forcing skip."
+        else:
+            success = await self._execute_action(action)
+        
         
         # Domain guard: redirect back if agent left the target app
         was_redirected = await self._check_domain_guard(action)
@@ -793,6 +818,9 @@ class GhostQAAgent:
                     f"(target: {self.target_host}). Navigating back to {self.last_good_url}[/red bold]"
                 )
                 
+                # Block the pre-redirect URL so we don't hit it again
+                self.blocked_redirect_urls.add(action.target or "")
+                
                 await self.browser.goto(self.last_good_url)
                 await self._auto_dismiss_modals()
                 return True
@@ -818,10 +846,23 @@ class GhostQAAgent:
                 return success
             
             elif action.action_type == "fill":
-                return await self.browser.fill(action.target, action.value or "")
+                return await self.browser.smart_fill(action.target, action.value or "")
             
             elif action.action_type == "navigate":
                 target_url = action.target
+                # Block known redirect traps
+                if target_url in self.blocked_redirect_urls:
+                    if self.config.debug:
+                        self.log.debug(f"Blocked navigation to known redirect trap: {target_url}")
+                    return False
+                
+                # Preemptively block external redirects (e.g. /redirect?to=https://github.com)
+                if target_url and "redirect" in target_url.lower() and "http" in target_url:
+                    if self.config.debug:
+                        self.log.debug(f"Preemptively blocked suspected external redirect: {target_url}")
+                    self.blocked_redirect_urls.add(target_url)
+                    return False
+                    
                 # Resolve relative URLs against current page
                 if target_url and not target_url.startswith(("http://", "https://")):
                     current = await self.browser.get_url()
@@ -843,13 +884,21 @@ class GhostQAAgent:
             
             elif action.action_type == "fill_form":
                 # Batch: fill all fields, then click submit
+                all_fields_success = True
                 if action.fields:
                     for field in action.fields:
                         field_target = field.get("target", "")
                         field_value = field.get("value", "")
                         if field_target and field_value:
                             try:
-                                await self.browser.fill(field_target, field_value)
+                                # Use smart_fill for Angular Material support
+                                fill_success = await self.browser.smart_fill(field_target, field_value)
+                                if not fill_success:
+                                    all_fields_success = False
+                                    if self.config.debug:
+                                        self.log.debug(f"fill_form field failed (smart_fill returned False): {field_target}")
+                                    continue
+                                
                                 self.explored_elements.append(f"fill: {field_target}")
                                 # Track for credential capture
                                 tl = field_target.lower()
@@ -858,16 +907,32 @@ class GhostQAAgent:
                                 elif "password" in tl or "pass" in tl:
                                     self._last_filled_password = field_value
                             except Exception as e:
+                                all_fields_success = False
                                 if self.config.debug:
-                                    self.log.debug(f"fill_form field failed: {field_target} → {e}")
+                                    self.log.debug(f"fill_form field failed (exception): {field_target} → {e}")
                     await asyncio.sleep(0.3)  # Brief pause before submit
+                
+                # If fields failed to fill, don't submit, report failure
+                if not all_fields_success:
+                    return False
+                
                 # Click submit button
                 if action.target:
                     try:
+                        # Force enable the button to bypass frontend validation (e.g. Angular disabled)
+                        await self.browser._page.evaluate(f"() => {{ const btn = document.querySelector('{action.target}'); if (btn) btn.removeAttribute('disabled'); }}")
                         await self.browser.click(action.target)
                     except Exception:
                         if self.config.debug:
                             self.log.debug(f"fill_form submit click failed: {action.target}")
+                        return False
+                    
+                    # Fallback: also try pressing Enter to submit the form naturally
+                    try:
+                        await self.browser.press("Enter")
+                    except Exception:
+                        pass
+                        
                 return True
             
             return False
